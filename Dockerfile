@@ -1,22 +1,14 @@
-FROM zc2638/php-nginx
+FROM php:8.0-fpm-buster
 
-# 拷贝nginx配置文件
-COPY www.conf /etc/nginx/conf.d/
+#更换源
+RUN    sed -i "s/deb.debian.org/mirrors.aliyun.com/g" /etc/apt/sources.list 
 
-# 拷贝laravel项目
-COPY . /var/www/laravel/
+#编译安装核心扩展 gd
+RUN apt-get update &&\
+    apt-get install -y     libfreetype6-dev libjpeg62-turbo-dev libpng-dev &&\
+    docker-php-ext-configure gd --with-freetype --with-jpeg &&\
+    docker-php-ext-install -j$(nproc) gd
 
-# 设置工作区
-WORKDIR /var/www/laravel
-
-# 安装laravel组件
-RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/ \
- && composer clear-cache \
- && composer install \
- && cp .env.example .env \
- && php artisan key:generate \
- && echo "#!/bin/bash \n nginx \n php-fpm \n tail -f" > init.sh
-
-EXPOSE 80
-
-CMD ["/bin/bash", "init.sh"]
+#pecl 安装扩展 redis
+RUN pecl install redis-5.3.2 \
+    && docker-php-ext-enable redis
